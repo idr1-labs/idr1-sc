@@ -14,7 +14,9 @@ contract Stablecoin is ERC20, ERC20Burnable, ERC20Pausable, Ownable, ERC20Permit
     IGroth16Verifier public verifier;
     mapping(bytes32 => bool) public usedNullifiers;
 
-    constructor(address initialOwner) ERC20("Stablecoin", "STCN") Ownable(initialOwner) ERC20Permit("Stablecoin") {}
+    constructor(address initialOwner, address _verifier) ERC20("IDR", "IDR1") Ownable(initialOwner) ERC20Permit("IDR") {
+        verifier = IGroth16Verifier(_verifier);
+    }
 
     function pause() public onlyOwner {
         _pause();
@@ -30,13 +32,13 @@ contract Stablecoin is ERC20, ERC20Burnable, ERC20Pausable, Ownable, ERC20Permit
         uint256[2] calldata _pA,
         uint256[2][2] calldata _pB,
         uint256[2] calldata _pC,
-        uint256[3] calldata publicSignals,
-        bytes32 nullifier
+        uint256[3] calldata publicSignals
     ) public onlyOwner {
         // verify
-        usedNullifiers[nullifier] = true;
+        bytes32 nullifier = bytes32(publicSignals[2]);
         require(!usedNullifiers[nullifier], "Nullifier already used");
         require(verifier.verifyProof(_pA, _pB, _pC, publicSignals), "Invalid proof");
+        usedNullifiers[nullifier] = true;
 
         // mint
         _mint(to, amount);
