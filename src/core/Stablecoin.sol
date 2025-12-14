@@ -8,12 +8,15 @@ import {ERC20Pausable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC2
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-// import {Verifier}
+import {IGroth16Verifier} from "../interface/IGroth16Verifier.sol";
 
 contract Stablecoin is ERC20, ERC20Burnable, ERC20Pausable, Ownable, ERC20Permit {
-    // Verifier public verifier;
+    IGroth16Verifier public verifier;
+    mapping(bytes32 => bool) public usedNullifiers;
 
-    constructor(address initialOwner) ERC20("Stablecoin", "STCN") Ownable(initialOwner) ERC20Permit("Stablecoin") {}
+    constructor(address initialOwner, address _verifier) ERC20("IDR", "IDR1") Ownable(initialOwner) ERC20Permit("IDR") {
+        verifier = IGroth16Verifier(_verifier);
+    }
 
     function pause() public onlyOwner {
         _pause();
@@ -23,11 +26,19 @@ contract Stablecoin is ERC20, ERC20Burnable, ERC20Pausable, Ownable, ERC20Permit
         _unpause();
     }
 
-    function mint(address to, uint256 amount, bytes calldata proof, bytes32 nullifier, uint256[] calldata publicInputs)
-        public
-        onlyOwner
-    {
+    function mint(
+        address to,
+        uint256 amount,
+        uint256[2] calldata _pA,
+        uint256[2][2] calldata _pB,
+        uint256[2] calldata _pC,
+        uint256[3] calldata publicSignals
+    ) public onlyOwner {
         // verify
+        bytes32 nullifier = bytes32(publicSignals[2]);
+        require(!usedNullifiers[nullifier], "Nullifier already used");
+        require(verifier.verifyProof(_pA, _pB, _pC, publicSignals), "Invalid proof");
+        usedNullifiers[nullifier] = true;
 
         // mint
         _mint(to, amount);
